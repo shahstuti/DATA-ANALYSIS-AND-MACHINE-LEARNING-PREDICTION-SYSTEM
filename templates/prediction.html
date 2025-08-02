@@ -1,0 +1,337 @@
+{% extends 'base.html' %}
+
+{% block title %}Machine Learning Prediction - {{ dataset.name }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h4 class="mb-0"><i class="fas fa-brain me-2"></i>Machine Learning Prediction - {{ dataset.name }}</h4>
+            </div>
+            <div class="card-body">
+                <form id="predictionForm">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="x_axis" class="form-label">Feature Columns (X-axis)</label>
+                                <select class="form-select" id="x_axis" name="x_axis" multiple required>
+                                    {% for column in numeric_columns %}
+                                    <option value="{{ column }}">{{ column }}</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">Hold Ctrl/Cmd to select multiple features</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="y_axis" class="form-label">Target Column (Y-axis)</label>
+                                <select class="form-select" id="y_axis" name="y_axis" required>
+                                    <option value="">Select target column</option>
+                                    {% for column in all_columns %}
+                                    <option value="{{ column }}">{{ column }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="algorithm_type" class="form-label">Algorithm Type</label>
+                                <select class="form-select" id="algorithm_type" name="algorithm_type" required>
+                                    <option value="">Select algorithm type</option>
+                                    <option value="regression">Regression</option>
+                                    <option value="classification">Classification</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="algorithm" class="form-label">Algorithm</label>
+                                <select class="form-select" id="algorithm" name="algorithm" required>
+                                    <option value="">Select algorithm</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center">
+                        <button type="submit" class="btn btn-info btn-lg">
+                            <i class="fas fa-play me-2"></i>Run Prediction
+                        </button>
+                        <div class="loading mt-3">
+                            <div class="spinner-border text-info" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2">Training model...</p>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4" id="resultsContainer" style="display: none;">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Prediction Results</h5>
+            </div>
+            <div class="card-body">
+                <div id="resultsContent"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Algorithm Guide</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-chart-line text-primary me-2"></i>Regression Algorithms:</h6>
+                        <ul>
+                            <li><strong>Linear Regression:</strong> Simple linear relationships</li>
+                            <li><strong>Random Forest Regressor:</strong> Complex non-linear patterns</li>
+                            <li><strong>Decision Tree Regressor:</strong> Rule-based predictions</li>
+                            <li><strong>Support Vector Regressor:</strong> High-dimensional data</li>
+                            <li><strong>K-Neighbors Regressor:</strong> Local similarity-based</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-tags text-success me-2"></i>Classification Algorithms:</h6>
+                        <ul>
+                            <li><strong>Logistic Regression:</strong> Binary/multi-class classification</li>
+                            <li><strong>Random Forest Classifier:</strong> Ensemble method</li>
+                            <li><strong>Decision Tree Classifier:</strong> Interpretable rules</li>
+                            <li><strong>Support Vector Classifier:</strong> Margin-based separation</li>
+                            <li><strong>K-Neighbors Classifier:</strong> Proximity-based classification</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12 text-center">
+        <a href="{% url 'analysis_app:graphs_html' %}" class="btn btn-warning me-3">
+            <i class="fas fa-chart-bar me-2"></i>Back to Graphs
+        </a>
+        <a href="{% url 'analysis_app:model_comparison_html' %}" class="btn btn-success" id="compareModelsBtn">
+            <i class="fas fa-balance-scale me-2"></i>Compare Models
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Parse the JSON arrays from Django template variables
+const regressionAlgorithms = JSON.parse('{{ regression_algorithms|escapejs }}');
+const classificationAlgorithms = JSON.parse('{{ classification_algorithms|escapejs }}');
+
+document.getElementById('algorithm_type').addEventListener('change', function() {
+    console.log('Algorithm type changed to:', this.value);
+    const algorithmSelect = document.getElementById('algorithm');
+    algorithmSelect.innerHTML = '<option value="">Select algorithm</option>';
+    
+    let algorithms = [];
+    if (this.value === 'regression') {
+        algorithms = regressionAlgorithms;
+    } else if (this.value === 'classification') {
+        algorithms = classificationAlgorithms;
+    }
+    
+    algorithms.forEach(algorithm => {
+        const option = document.createElement('option');
+        option.value = algorithm;
+        option.textContent = algorithm;
+        algorithmSelect.appendChild(option);
+    });
+});
+
+document.getElementById('predictionForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    console.log('Form submitted');
+    
+    // Show loading
+    document.querySelector('.loading').classList.add('show');
+    
+    const formData = new FormData(this);
+    
+    // Log form data for debugging
+    for (let pair of formData.entries()) {
+        console.log(pair[0] + ': ' + pair[1]);
+    }
+    
+    // Get CSRF token
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    fetch('{% url "analysis_app:run_prediction" dataset.id %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': csrfToken
+        }
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        return response.json();
+    })
+    .then(data => {
+        console.log('Response data:', data);
+        document.querySelector('.loading').classList.remove('show');
+        
+        if (data.success) {
+            displayResults(data.results);
+            document.getElementById('resultsContainer').style.display = 'block';
+            document.getElementById('resultsContainer').scrollIntoView({ behavior: 'smooth' });
+            
+            // Enable compare models button if we have results
+            const compareBtn = document.getElementById('compareModelsBtn');
+            if (compareBtn) {
+                compareBtn.classList.remove('disabled');
+            }
+        } else {
+            // Show error in a more user-friendly way
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'alert alert-danger mt-3';
+            errorDiv.innerHTML = `<i class="fas fa-exclamation-circle me-2"></i>${data.error}`;
+            document.getElementById('predictionForm').appendChild(errorDiv);
+            
+            // Remove error message after 5 seconds
+            setTimeout(() => {
+                errorDiv.remove();
+            }, 5000);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        document.querySelector('.loading').classList.remove('show');
+        alert('Error running prediction. Please check the console for details.');
+    });
+});
+
+function displayResults(results) {
+    console.log('Displaying results:', results);
+    
+    let html = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6><i class="fas fa-info-circle text-primary me-2"></i>Model Information</h6>
+                <table class="table table-striped">
+                    <tr><th>Algorithm:</th><td>${results.algorithm}</td></tr>
+                    <tr><th>Features:</th><td>${results.features.join(', ')}</td></tr>
+                    <tr><th>Target:</th><td>${results.target}</td></tr>
+                    <tr><th>Training Size:</th><td>${results.train_size}</td></tr>
+                    <tr><th>Test Size:</th><td>${results.test_size}</td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6><i class="fas fa-chart-bar text-success me-2"></i>Performance Metrics</h6>
+                <table class="table table-striped">
+    `;
+    
+    if (results.is_classification) {
+        html += `
+                    <tr><th>Accuracy:</th><td>${(results.accuracy * 100).toFixed(2)}%</td></tr>
+                    <tr><th>Type:</th><td>Classification</td></tr>
+                </table>
+            </div>
+        </div>
+        `;
+        
+        if (results.confusion_matrix) {
+            html += `
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6><i class="fas fa-table text-warning me-2"></i>Confusion Matrix</h6>
+                        <div class="table-responsive">
+                            <table class="table table-bordered text-center">
+                                <tbody>
+            `;
+            
+            results.confusion_matrix.forEach((row, i) => {
+                html += '<tr>';
+                row.forEach(cell => {
+                    html += `<td>${cell}</td>`;
+                });
+                html += '</tr>';
+            });
+            
+            html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        if (results.classification_report) {
+            html += `
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6><i class="fas fa-file-alt text-info me-2"></i>Classification Report</h6>
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Class</th>
+                                        <th>Precision</th>
+                                        <th>Recall</th>
+                                        <th>F1-Score</th>
+                                        <th>Support</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+            `;
+            
+            Object.keys(results.classification_report).forEach(key => {
+                if (key !== 'accuracy' && key !== 'macro avg' && key !== 'weighted avg') {
+                    const metrics = results.classification_report[key];
+                    if (typeof metrics === 'object') {
+                        html += `
+                            <tr>
+                                <td>${key}</td>
+                                <td>${metrics.precision ? metrics.precision.toFixed(3) : 'N/A'}</td>
+                                <td>${metrics.recall ? metrics.recall.toFixed(3) : 'N/A'}</td>
+                                <td>${metrics['f1-score'] ? metrics['f1-score'].toFixed(3) : 'N/A'}</td>
+                                <td>${metrics.support || 'N/A'}</td>
+                            </tr>
+                        `;
+                    }
+                }
+            });
+            
+            html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    } else {
+        html += `
+                    <tr><th>R² Score:</th><td>${results.r2.toFixed(4)}</td></tr>
+                    <tr><th>MSE:</th><td>${results.mse.toFixed(4)}</td></tr>
+                    <tr><th>RMSE:</th><td>${results.rmse.toFixed(4)}</td></tr>
+                    <tr><th>Type:</th><td>Regression</td></tr>
+                </table>
+            </div>
+        </div>
+        `;
+    }
+    
+    document.getElementById('resultsContent').innerHTML = html;
+}
+</script>
+{% endblock %}

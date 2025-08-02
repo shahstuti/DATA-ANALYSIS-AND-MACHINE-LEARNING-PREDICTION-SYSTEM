@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}Upload CSV - Data Analysis Platform{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-upload me-2"></i>Upload CSV File</h4>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="dataset_name" class="form-label">Dataset Name</label>
+                        <input type="text" class="form-control" id="dataset_name" name="dataset_name" placeholder="Enter dataset name">
+                    </div>
+                    <div class="mb-3">
+                        <label for="csv_file" class="form-label">Choose CSV File</label>
+                        <input type="file" class="form-control" id="csv_file" name="csv_file" accept=".csv" required>
+                        <div class="form-text">Please select a CSV file to upload for analysis.</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-upload me-2"></i>Upload and Analyze
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>What You Can Do</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-search text-primary me-2"></i>Data Analysis</h6>
+                        <ul class="list-unstyled">
+                            <li>• View data shape and structure</li>
+                            <li>• Check data types and missing values</li>
+                            <li>• Get descriptive statistics</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-broom text-success me-2"></i>Data Cleaning</h6>
+                        <ul class="list-unstyled">
+                            <li>• Remove duplicates and null values</li>
+                            <li>• Fill missing values with mean/median/mode</li>
+                            <li>• Convert data types and rename columns</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-chart-bar text-warning me-2"></i>Visualization</h6>
+                        <ul class="list-unstyled">
+                            <li>• Generate various chart types</li>
+                            <li>• Customize colors, labels, and titles</li>
+                            <li>• Create correlation heatmaps</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-brain text-info me-2"></i>Machine Learning</h6>
+                        <ul class="list-unstyled">
+                            <li>• Train regression and classification models</li>
+                            <li>• Compare model performance</li>
+                            <li>• Get accuracy scores and metrics</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

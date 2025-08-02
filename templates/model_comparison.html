@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+
+{% block title %}Model Comparison - {{ dataset.name }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h4 class="mb-0"><i class="fas fa-balance-scale me-2"></i>Model Comparison - {{ dataset.name }}</h4>
+            </div>
+            <div class="card-body">
+                {% if prediction_results %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Comparing {{ prediction_results|length }} trained models. The best performing model is highlighted.
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Algorithm</th>
+                                    <th>Features</th>
+                                    <th>Target</th>
+                                    <th>Type</th>
+                                    <th>Performance</th>
+                                    <th>Train Size</th>
+                                    <th>Test Size</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for result in prediction_results %}
+                                <tr>
+                                    <td><strong>{{ result.algorithm }}</strong></td>
+                                    <td>
+                                        <small>
+                                            {% for feature in result.features %}
+                                                <span class="badge bg-secondary me-1">{{ feature }}</span>
+                                            {% endfor %}
+                                        </small>
+                                    </td>
+                                    <td><span class="badge bg-primary">{{ result.target }}</span></td>
+                                    <td>
+                                        {% if result.is_classification %}
+                                            <span class="badge bg-success">Classification</span>
+                                        {% else %}
+                                            <span class="badge bg-info">Regression</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if result.is_classification %}
+                                            <strong>Accuracy: {{ result.accuracy|floatformat:3 }}</strong>
+                                        {% else %}
+                                            <strong>R²: {{ result.r2|floatformat:3 }}</strong><br>
+                                            <small>MSE: {{ result.mse|floatformat:4 }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ result.train_size }}</td>
+                                    <td>{{ result.test_size }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="card border-success">
+                                <div class="card-header bg-success text-white">
+                                    <h6 class="mb-0"><i class="fas fa-trophy me-2"></i>Best Classification Model</h6>
+                                </div>
+                                <div class="card-body">
+                                    {% if best_classification %}
+                                        <h6>{{ best_classification.algorithm }}</h6>
+                                        <p><strong>Accuracy:</strong> {{ best_classification.accuracy|floatformat:3 }} ({{ best_classification.accuracy_percent }}%)</p>
+                                        <p><strong>Features:</strong> {{ best_classification.features|join:", " }}</p>
+                                        <p><strong>Target:</strong> {{ best_classification.target }}</p>
+                                    {% else %}
+                                        <p class="text-muted">No classification models trained yet.</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card border-info">
+                                <div class="card-header bg-info text-white">
+                                    <h6 class="mb-0"><i class="fas fa-trophy me-2"></i>Best Regression Model</h6>
+                                </div>
+                                <div class="card-body">
+                                    {% if best_regression %}
+                                        <h6>{{ best_regression.algorithm }}</h6>
+                                        <p><strong>R² Score:</strong> {{ best_regression.r2|floatformat:4 }}</p>
+                                        <p><strong>MSE:</strong> {{ best_regression.mse|floatformat:4 }}</p>
+                                        <p><strong>Features:</strong> {{ best_regression.features|join:", " }}</p>
+                                        <p><strong>Target:</strong> {{ best_regression.target }}</p>
+                                    {% else %}
+                                        <p class="text-muted">No regression models trained yet.</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-12 text-center">
+                            <button class="btn btn-danger" onclick="clearResults()">
+                                <i class="fas fa-trash me-2"></i>Clear All Results
+                            </button>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning text-center">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>No models trained yet!</strong><br>
+                        Go to the <a href="{% url 'analysis_app:prediction_html' %}" class="alert-link">Prediction page</a> to train some models first.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Model Selection Tips</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-chart-line text-info me-2"></i>For Regression:</h6>
+                        <ul>
+                            <li><strong>Higher R² is better</strong> (closer to 1.0)</li>
+                            <li><strong>Lower MSE is better</strong> (closer to 0)</li>
+                            <li>R² > 0.7 is generally considered good</li>
+                            <li>Consider model complexity vs. performance</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-tags text-success me-2"></i>For Classification:</h6>
+                        <ul>
+                            <li><strong>Higher accuracy is better</strong> (closer to 1.0)</li>
+                            <li>Check precision and recall for balanced performance</li>
+                            <li>Accuracy > 0.8 is generally considered good</li>
+                            <li>Consider confusion matrix for detailed analysis</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <div class="alert alert-info">
+                            <strong>Note:</strong> The "best" model depends on your specific use case. Consider factors like:
+                            interpretability, training time, prediction speed, and robustness to new data.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12 text-center">            <a href="{% url 'analysis_app:prediction_html' %}" class="btn btn-info me-3">
+                <i class="fas fa-brain me-2"></i>Train More Models
+            </a>
+            <a href="{% url 'analysis_app:analysis_html' %}" class="btn btn-primary">
+                <i class="fas fa-search me-2"></i>Back to Analysis
+            </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function clearResults() {
+    if (confirm('Are you sure you want to clear all prediction results?')) {
+        fetch('{% url "analysis_app:model_comparison_html" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                action: 'clear_results'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error clearing results: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error clearing results:', error);
+            alert('Error clearing results. Please try again.');
+        });
+    }
+}
+</script>
+{% endblock %}

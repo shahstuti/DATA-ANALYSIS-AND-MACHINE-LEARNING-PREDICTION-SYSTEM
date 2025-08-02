@@ -1,0 +1,240 @@
+{% extends 'base.html' %}
+
+{% block title %}Data Visualization - {{ dataset.name }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <h4 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Data Visualization - {{ dataset.name }}</h4>
+            </div>
+            <div class="card-body">
+                <form id="chartForm">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="chart_type" class="form-label">Chart Type</label>
+                                <select class="form-select" id="chart_type" name="chart_type" required>
+                                    <option value="">Select chart type</option>
+                                    {% for chart_type in chart_types %}
+                                    <option value="{{ chart_type }}">{{ chart_type|title }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="x_axis" class="form-label">X-Axis</label>
+                                <select class="form-select" id="x_axis" name="x_axis" required>
+                                    <option value="">Select X-axis column</option>
+                                    {% for column in all_columns %}
+                                    <option value="{{ column }}">{{ column }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="y_axis" class="form-label">Y-Axis (optional for some charts)</label>
+                                <select class="form-select" id="y_axis" name="y_axis">
+                                    <option value="">Select Y-axis column</option>
+                                    {% for column in numeric_columns %}
+                                    <option value="{{ column }}">{{ column }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="color" class="form-label">Color</label>
+                                <select class="form-select" id="color" name="color">
+                                    <option value="blue">Blue</option>
+                                    <option value="red">Red</option>
+                                    <option value="green">Green</option>
+                                    <option value="purple">Purple</option>
+                                    <option value="orange">Orange</option>
+                                    <option value="brown">Brown</option>
+                                    <option value="pink">Pink</option>
+                                    <option value="gray">Gray</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="title" class="form-label">Chart Title</label>
+                                <input type="text" class="form-control" id="title" name="title" placeholder="Enter chart title">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="x_label" class="form-label">X-Axis Label</label>
+                                <input type="text" class="form-control" id="x_label" name="x_label" placeholder="X-axis label">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="y_label" class="form-label">Y-Axis Label</label>
+                                <input type="text" class="form-control" id="y_label" name="y_label" placeholder="Y-axis label">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center">
+                        <button type="submit" class="btn btn-warning btn-lg">
+                            <i class="fas fa-chart-line me-2"></i>Generate Chart
+                        </button>
+                        <div class="loading mt-3">
+                            <div class="spinner-border text-warning" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2">Generating chart...</p>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4" id="chartContainer" style="display: none;">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-image me-2"></i>Generated Chart</h5>
+            </div>
+            <div class="card-body text-center">
+                <div class="chart-container" style="max-width: 100%; overflow-x: auto;">
+                    <img id="chartImage" src="/placeholder.svg" alt="Generated Chart" class="img-fluid" style="max-width: 100%; height: auto;">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Chart Types Guide</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Single Variable Charts:</h6>
+                        <ul>
+                            <li><strong>Histogram:</strong> Distribution of a numeric variable</li>
+                            <li><strong>Box:</strong> Box plot for outlier detection</li>
+                            <li><strong>Distribution:</strong> Density plot with curve</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Two Variable Charts:</h6>
+                        <ul>
+                            <li><strong>Scatter:</strong> Relationship between two numeric variables</li>
+                            <li><strong>Line:</strong> Trend over time or ordered data</li>
+                            <li><strong>Bar:</strong> Comparison of categories</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-12 mt-3">
+                        <h6>Multi-Variable Charts:</h6>
+                        <ul>
+                            <li><strong>Heatmap:</strong> Correlation matrix of all numeric variables</li>
+                            <li><strong>Pairplot:</strong> Scatter plots for all variable pairs</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12 text-center">
+        <a href="{% url 'analysis_app:cleaning_html' %}" class="btn btn-success me-3">
+            <i class="fas fa-broom me-2"></i>Back to Cleaning
+        </a>
+        <a href="{% url 'analysis_app:prediction_html' %}" class="btn btn-info">
+            <i class="fas fa-brain me-2"></i>Machine Learning
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('chartForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // Show loading
+    document.querySelector('.loading').classList.add('show');
+    
+    const formData = new FormData(this);
+    
+    fetch('{% url "analysis_app:generate_chart" dataset.id %}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+.then(data => {
+        document.querySelector('.loading').classList.remove('show');
+        
+        if (data.success) {
+            document.getElementById('chartImage').src = 'data:image/png;base64,' + data.chart;
+            document.getElementById('chartContainer').style.display = 'block';
+            
+            // Scroll to chart
+            document.getElementById('chartContainer').scrollIntoView({ behavior: 'smooth' });
+        } else {
+            alert('Error generating chart: ' + data.error);
+        }
+    })
+    .catch(error => {
+        document.querySelector('.loading').classList.remove('show');
+        alert('Error: ' + error);
+    });
+});
+
+// Auto-fill labels when axes are selected
+document.getElementById('x_axis').addEventListener('change', function() {
+    if (!document.getElementById('x_label').value) {
+        document.getElementById('x_label').value = this.value;
+    }
+    if (!document.getElementById('title').value) {
+        updateTitle();
+    }
+});
+
+document.getElementById('y_axis').addEventListener('change', function() {
+    if (!document.getElementById('y_label').value) {
+        document.getElementById('y_label').value = this.value;
+    }
+    if (!document.getElementById('title').value) {
+        updateTitle();
+    }
+});
+
+document.getElementById('chart_type').addEventListener('change', function() {
+    if (!document.getElementById('title').value) {
+        updateTitle();
+    }
+});
+
+function updateTitle() {
+    const chartType = document.getElementById('chart_type').value;
+    const xAxis = document.getElementById('x_axis').value;
+    const yAxis = document.getElementById('y_axis').value;
+    
+    if (chartType && xAxis) {
+        let title = chartType.charAt(0).toUpperCase() + chartType.slice(1);
+        if (yAxis) {
+            title += ` of ${yAxis} vs ${xAxis}`;
+        } else {
+            title += ` of ${xAxis}`;
+        }
+        document.getElementById('title').value = title;
+    }
+}
+</script>
+{% endblock %}

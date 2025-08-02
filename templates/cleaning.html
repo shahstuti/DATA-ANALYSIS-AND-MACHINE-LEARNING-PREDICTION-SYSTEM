@@ -1,0 +1,241 @@
+
+{% extends 'base.html' %}
+
+{% block title %}Data Cleaning - {{ dataset.name }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h4 class="mb-0"><i class="fas fa-broom me-2"></i>Data Cleaning - {{ dataset.name }}</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Current Dataset:</strong> {{ total_rows }} rows, {{ columns_info|length }} columns
+                    {% if total_duplicates > 0 %}
+                        <br><strong>Duplicates found:</strong> {{ total_duplicates }} rows
+                    {% endif %}
+                </div>
+
+                <form id="cleaningForm">
+                    {% csrf_token %}
+                    <div class="row">
+                        {% for column, info in columns_info.items %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header">
+                                    <h6 class="mb-0">{{ column }}</h6>
+                                    <small class="text-muted">{{ info.dtype }}</small>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-2">
+                                        <small><strong>Missing:</strong> {{ info.missing_count }}</small><br>
+                                        <small><strong>Unique:</strong> {{ info.unique_count }}</small>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label"><strong>Cleaning Options:</strong></label>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" 
+                                                   id="remove_null_{{ column }}" 
+                                                   data-column="{{ column }}" 
+                                                   data-operation="remove_null">
+                                            <label class="form-check-label" for="remove_null_{{ column }}">
+                                                Remove null values
+                                            </label>
+                                        </div>
+                                        
+                                        {% if info.missing_count > 0 %}
+                                            {% if info.is_numeric %}
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" 
+                                                           id="fill_mean_{{ column }}" 
+                                                           data-column="{{ column }}" 
+                                                           data-operation="fill_mean">
+                                                    <label class="form-check-label" for="fill_mean_{{ column }}">
+                                                        Fill with mean ({{ info.mean|floatformat:2 }})
+                                                    </label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" 
+                                                           id="fill_median_{{ column }}" 
+                                                           data-column="{{ column }}" 
+                                                           data-operation="fill_median">
+                                                    <label class="form-check-label" for="fill_median_{{ column }}">
+                                                        Fill with median ({{ info.median|floatformat:2 }})
+                                                    </label>
+                                                </div>
+                                            {% endif %}
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" 
+                                                       id="fill_mode_{{ column }}" 
+                                                       data-column="{{ column }}" 
+                                                       data-operation="fill_mode">
+                                                <label class="form-check-label" for="fill_mode_{{ column }}">
+                                                    Fill with mode ({{ info.mode|truncatechars:20 }})
+                                                </label>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label"><strong>Rename Column:</strong></label>
+                                        <input type="text" class="form-control form-control-sm" 
+                                               placeholder="New name" 
+                                               data-column="{{ column }}" 
+                                               data-action="rename">
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label"><strong>Convert Type:</strong></label>
+                                        <select class="form-select form-select-sm" 
+                                                data-column="{{ column }}" 
+                                                data-action="convert_type">
+                                            <option value="">Keep current ({{ info.dtype }})</option>
+                                            <option value="int64">Integer</option>
+                                            <option value="float64">Float</option>
+                                            <option value="object">Text</option>
+                                            <option value="datetime64">DateTime</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <small class="text-muted"><strong>Sample values:</strong></small><br>
+                                        <small class="text-muted">
+                                            {% for value in info.sample_values|slice:":3" %}
+                                                {{ value|default_if_none:""|stringformat:"s"|truncatechars:15 }}{% if not forloop.last %}, {% endif %}
+                                            {% endfor %}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    {% if total_duplicates > 0 %}
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="card border-warning">
+                                <div class="card-body">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="remove_duplicates">
+                                        <label class="form-check-label" for="remove_duplicates">
+                                            <strong>Remove {{ total_duplicates }} duplicate rows</strong>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="row mt-4">
+                        <div class="col-12 text-center">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-magic me-2"></i>Apply Cleaning Operations
+                            </button>
+                            <div class="loading mt-3">
+                                <div class="spinner-border text-success" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="mt-2">Cleaning data...</p>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12 text-center">
+        <a href="{% url 'analysis_app:analysis_html' %}" class="btn btn-secondary me-3">
+            <i class="fas fa-arrow-left me-2"></i>Back to Analysis
+        </a>
+        <a href="{% url 'analysis_app:graphs_html' %}" class="btn btn-warning">
+            <i class="fas fa-chart-bar me-2"></i>Generate Graphs
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('cleaningForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // Show loading
+    document.querySelector('.loading').classList.add('show');
+    
+    // Collect cleaning operations
+    const cleaningOperations = {};
+    const columnRenames = {};
+    const dtypeChanges = {};
+    
+    // Get cleaning operations for each column
+    document.querySelectorAll('input[data-operation]').forEach(input => {
+        if (input.checked) {
+            const column = input.dataset.column;
+            const operation = input.dataset.operation;
+            
+            if (!cleaningOperations[column]) {
+                cleaningOperations[column] = [];
+            }
+            cleaningOperations[column].push(operation);
+        }
+    });
+    
+    // Get column renames
+    document.querySelectorAll('input[data-action="rename"]').forEach(input => {
+        if (input.value.trim()) {
+            columnRenames[input.dataset.column] = input.value.trim();
+        }
+    });
+    
+    // Get datatype changes
+    document.querySelectorAll('select[data-action="convert_type"]').forEach(select => {
+        if (select.value) {
+            dtypeChanges[select.dataset.column] = select.value;
+        }
+    });
+    
+    // Add remove duplicates if checked
+    if (document.getElementById('remove_duplicates') && document.getElementById('remove_duplicates').checked) {
+        cleaningOperations['_global'] = ['remove_duplicates'];
+    }
+    
+    // Send AJAX request
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+    formData.append('cleaning_operations', JSON.stringify(cleaningOperations));
+    formData.append('column_renames', JSON.stringify(columnRenames));
+    formData.append('dtype_changes', JSON.stringify(dtypeChanges));
+    
+    fetch('{% url "analysis_app:clean_data" dataset.id %}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.querySelector('.loading').classList.remove('show');
+        
+        if (data.success) {
+            alert('Data cleaned successfully! New shape: ' + data.new_shape[0] + ' rows, ' + data.new_shape[1] + ' columns');
+            // Redirect to graphs page after successful cleaning, as it's the logical next step.
+            // Redirect to graphs HTML page with success message
+            window.location.href = '{% url "analysis_app:graphs_html" %}';
+        } else {
+            alert('Error cleaning data: ' + data.error);
+        }
+    })
+    .catch(error => {
+        document.querySelector('.loading').classList.remove('show');
+        alert('Error: ' + error);
+    });
+});
+</script>
+{% endblock %}
